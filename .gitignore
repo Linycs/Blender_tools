@@ -1,0 +1,10 @@
+# folders
+cache/
+temp*/
+test*/
+vis_tools/
+
+# files
+*.log
+*.mp4
+
