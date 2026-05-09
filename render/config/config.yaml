@@ -5,8 +5,8 @@ input:
 output:
   folder: null
   overwrite: true
-  temp_img_dir: D:/linycs/projects/visualization/Blender_tools/output/render/temp_image
-  output_video: D:/linycs/projects/visualization/Blender_tools/output/render/temp_video
+  temp_img_dir: temp_image
+  output_video: temp_video
 
 # scene:
 
@@ -14,8 +14,8 @@ camera:
   track_axis: 'TRACK_NEGATIVE_Z'
   up_axis: 'UP_Y'
   Distance_ratio: 3
-  Rxy_angle: 90
-  Rz_angle: 0
+  R_xy_angle: 90
+  R_z_angle: 45
 
 light:
   type: AREA

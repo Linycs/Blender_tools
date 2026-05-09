@@ -16,7 +16,7 @@ save_video_path=$output_folder/render-$track_to_axis-$up_axis.mp4
 temp_img_dir=/home/jeff/linycs/Annotations/blender_render/temp_frames
 
 echo "start rendering..."
-$blender_path -b -P code/render/batch_render_video.py --\
+$blender_path -b -P render/batch_render_video.py --\
     $input_folder \
     $output_folder \
     $file_pattern \

@@ -8,28 +8,39 @@ import yaml
 import argparse
 
 def parse_args():
+    sys_args = sys.argv[sys.argv.index("--")+1:] if "--" in sys.argv else []
     parser = argparse.ArgumentParser(description="Batch Render Video from Meshes")
-    parser.add_argument('--config', type=str, required=True, help='Path to YAML config file')
-    return parser.parse_args()
+    parser.add_argument('--config', type=str, required=True, help='Path to YAML configuration file')
+    args = parser.parse_args(sys_args)
+    return args
 
 def init_io():
     input_folder =config['input']['folder']
     file_pattern =config['input']['file_pattern']
 
     output_folder=config['output']['folder']
-    temp_img_dir = config['output']['temp_img_dir']
+    config['output']['temp_img_dir'] = os.path.join(
+            output_folder, 
+            config['output']['temp_img_dir']
+        )
+    config['output']['output_video'] = os.path.join(
+            output_folder, 
+            config['output']['output_video']
+        )
+    
+    os.makedirs(output_folder, exist_ok=True)
+    if not config['output']['overwrite']:
+        print(f"Output folder {output_folder} already exists.")
+        exit(0)
 
-    if not os.path.exists(temp_img_dir):
-        os.makedirs(temp_img_dir)
-    elif len(os.listdir(temp_img_dir)) > 0:
+    temp_img_dir = config['output']['temp_img_dir']
+    os.makedirs(temp_img_dir, exist_ok=True)
+    if len(os.listdir(temp_img_dir)) > 0:
         # clear existing files
         os.system(f"rm {temp_img_dir}/*")
 
-    if not os.path.exists(output_folder):
-        os.makedirs(output_folder)
-    elif not config['output']['overwrite']:
-        print(f"Output folder {output_folder} already exists.")
-        exit(0)
+    output_video = config['output']['output_video']
+    os.makedirs(output_video, exist_ok=True)
 
     # 1. Clear Scene
     bpy.ops.object.select_all(action='SELECT')
@@ -192,7 +203,7 @@ def render_video(global_info):
     scene.render.image_settings.file_format = 'FFMPEG'
     scene.render.ffmpeg.format = 'MPEG4'
     scene.render.ffmpeg.codec = 'H264'
-    scene.render.fps = config['render']['fps']
+    scene.render.fps = config['video']['fps']
     scene.render.filepath = output_video
     scene.frame_start = 1
     scene.frame_end = frame_count
