@@ -20,6 +20,8 @@ up_axis = args[7]
 cam_ratioD_Rxy_Rz = list(map(float, args[8].split('_')))
 print(f'cam_ratioD_Rxy_Rz: [{cam_ratioD_Rxy_Rz}]')
 
+light_bias = (0,2,2)
+
 def init_io():
     if not os.path.exists(temp_img_dir):
         os.makedirs(temp_img_dir)
@@ -102,7 +104,13 @@ def set_camera_light(global_info):
     track.track_axis = track_axis # Z
     track.up_axis = up_axis
 
-    bpy.ops.object.light_add(type='SUN', location=global_info['g_center'] + mathutils.Vector((0,0,10)))
+    bpy.ops.object.light_add(type='AREA', location=global_info['g_center'] + mathutils.Vector(light_bias))
+    area_light = bpy.context.object
+    area_light.data.color = (1, 1, 1)  # 白色光
+    area_light.data.size = 5  # 增加光源尺寸来软化阴影
+    area_light.data.energy = 250
+    area_light_track = area_light.constraints.new(type='TRACK_TO')
+    area_light_track.target = empty
     
 def set_render():
     # 5. Metadata/Stamp Setup

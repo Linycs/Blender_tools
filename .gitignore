@@ -3,8 +3,9 @@ cache/
 temp*/
 test*/
 vis_tools/
+output/
 
 # files
 *.log
 *.mp4
-
+local*

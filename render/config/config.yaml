@@ -1,0 +1,38 @@
+input:
+  folder: null
+  file_pattern: "*.obj"
+
+output:
+  folder: null
+  overwrite: true
+  temp_img_dir: D:/linycs/projects/visualization/Blender_tools/output/render/temp_image
+  output_video: D:/linycs/projects/visualization/Blender_tools/output/render/temp_video
+
+# scene:
+
+camera:
+  track_axis: 'TRACK_NEGATIVE_Z'
+  up_axis: 'UP_Y'
+  Distance_ratio: 3
+  Rxy_angle: 90
+  Rz_angle: 0
+
+light:
+  type: AREA
+  position_bias: [0, 2, 2]
+  kwargs:
+    energy: 250
+    size: 5
+    color: [1, 1, 1]
+
+render:
+  set_note: true
+  resolution_x: 1280
+  resolution_y: 720
+  resolution_percentage: 100
+  engine: BLENDER_EEVEE_NEXT # Use 'BLENDER_EEVEE' for older versions
+  kwargs:
+    taa_render_samples: 8
+
+video:
+  fps: 30

@@ -5,27 +5,20 @@ import glob
 import time
 import math
 import yaml
+import argparse
 
-# --- Configuration ---
-input_folder="/media/linycs/ssd1T/projects_dataset/data_deliver/smpl2qiaojie/output/vis/vis3d/results_filter/354630_03-period_0-0_600_validated"
-output_folder="/media/linycs/ssd1T/projects_docker/Annotation/vis_blender"
-
-file_pattern="frame_*.obj"
-overwrite_output = 1
-track_axis = "TRACK_NEGATIVE_Z"
-up_axis = "UP_Y"
-output_video = "/media/linycs/ssd1T/projects_docker/Annotation/blender_render/tmp_output"
-temp_img_dir = "/media/linycs/ssd1T/projects_docker/Annotation/blender_render/temp_frames"
-
-cam_ratioD_Rxy_Rz = "3_90_90"
-cam_ratioD_Rxy_Rz = list(map(float, cam_ratioD_Rxy_Rz.split('_')))
-print(f'cam_ratioD_Rxy_Rz: [{cam_ratioD_Rxy_Rz}]')
-
-light_bias = (0,2,2)
-
-set_note = False
+def parse_args():
+    parser = argparse.ArgumentParser(description="Batch Render Video from Meshes")
+    parser.add_argument('--config', type=str, required=True, help='Path to YAML config file')
+    return parser.parse_args()
 
 def init_io():
+    input_folder =config['input']['folder']
+    file_pattern =config['input']['file_pattern']
+
+    output_folder=config['output']['folder']
+    temp_img_dir = config['output']['temp_img_dir']
+
     if not os.path.exists(temp_img_dir):
         os.makedirs(temp_img_dir)
     elif len(os.listdir(temp_img_dir)) > 0:
@@ -34,7 +27,7 @@ def init_io():
 
     if not os.path.exists(output_folder):
         os.makedirs(output_folder)
-    elif not overwrite_output:
+    elif not config['output']['overwrite']:
         print(f"Output folder {output_folder} already exists.")
         exit(0)
 
@@ -82,7 +75,9 @@ def init_global_info():
     }
     
 def set_camera_light(global_info):
-    dist_ratio, R_xy_angle, R_z_angle = cam_ratioD_Rxy_Rz
+    dist_ratio = config['camera']['Distance_ratio']
+    R_xy_angle = config['camera']['R_xy_angle']
+    R_z_angle  = config['camera']['R_z_angle']
     # object is face to -Y axis, and stand upright
     R_xy_angle, R_z_angle = R_xy_angle * math.pi/ 180, R_z_angle * math.pi / 180
     dist = global_info['max_dim'] * dist_ratio
@@ -98,39 +93,52 @@ def set_camera_light(global_info):
     bpy.context.scene.camera = cam
 
     # Static Tracking
+    ## * camera
     empty = bpy.data.objects.new("Target", None)
     bpy.context.collection.objects.link(empty)
     empty.location = global_info['g_center']
     track = cam.constraints.new(type='TRACK_TO')
     track.target = empty
-    track.track_axis = track_axis # Z
-    track.up_axis = up_axis
+    track.track_axis = config['camera']['track_axis']
+    track.up_axis = config['camera']['up_axis']
 
-    # bpy.ops.object.light_add(type='SUN', location=global_info['g_center'] + mathutils.Vector(light_bias))
-    bpy.ops.object.light_add(type='AREA', location=global_info['g_center'] + mathutils.Vector(light_bias))
+    ## * light
+    bpy.ops.object.light_add(
+        type=config['light']['type'], 
+        location=global_info['g_center'] + \
+            mathutils.Vector(config['light']['position_bias'])
+    )
     area_light = bpy.context.object
-    area_light.data.color = (1, 1, 1)  # 白色光
-    area_light.data.size = 5  # 增加光源尺寸来软化阴影
-    area_light.data.energy = 250
+    for key in config['light']['kwargs']:
+        if hasattr(area_light.data, key):
+            setattr(area_light.data, key, config['light']['kwargs'][key])
+            
     area_light_track = area_light.constraints.new(type='TRACK_TO')
     area_light_track.target = empty
 
 def set_render():
     # 5. Metadata/Stamp Setup
     scene = bpy.context.scene
-    scene.render.engine = 'BLENDER_EEVEE_NEXT'# Use 'BLENDER_EEVEE' for older versions
-    scene.eevee.taa_render_samples = 8 # higher samples for better quality
 
-    if set_note:
+    # set render engine and quality
+    engine_type = config['render']['engine']
+    scene.render.engine = engine_type
+    kwargs_render = config['render']['kwargs']
+    if 'eevee' in engine_type.lower():
+        for key in kwargs_render:
+            if hasattr(scene.eevee, key):
+                setattr(scene.eevee, key, kwargs_render[key])
+
+    if config['render']['set_note']:
         scene.render.use_stamp = True
         scene.render.use_stamp_note = True
         scene.render.stamp_background = (0, 0, 0, 0.5)
         scene.render.stamp_font_size = 15
 
     # 6. Render individual frames to PNG first
-    scene.render.resolution_x = 1280
-    scene.render.resolution_y = 720
-    scene.render.resolution_percentage = 150
+    scene.render.resolution_x = config['render']['resolution_x']
+    scene.render.resolution_y = config['render']['resolution_y']
+    scene.render.resolution_percentage = config['render']['resolution_percentage']
     scene.render.image_settings.file_format = 'PNG'
 
 def render(global_info):
@@ -144,16 +152,18 @@ def render(global_info):
         obj.hide_render = False
         
         # Metadata note (Index)
-        if set_note:
+        if config['render']['set_note']:
             scene.render.stamp_note_text = f"Mesh Index: {i} | Name: {obj.name}"
             # Render Frame
-        scene.render.filepath = os.path.join(temp_img_dir, f"frame_{i:04d}.png")
+        scene.render.filepath = os.path.join(config['output']['temp_img_dir'], f"frame_{i:04d}.png")
         bpy.ops.render.render(write_still=True)
 
     render_end_time = time.time()
     print(f"Rendered {len(mesh_objects)} frames in {render_end_time - render_start_time:.2f} seconds.")
 
 def render_video(global_info):
+    output_video = config['output']['output_video']
+
     scene = bpy.context.scene
     mesh_objects = global_info['mesh_objects']
 
@@ -171,7 +181,7 @@ def render_video(global_info):
     frame_count = len(mesh_objects)
     img_strip = scene.sequence_editor.sequences.new_image(
         name="MyVideoExport",
-        filepath=os.path.join(temp_img_dir, "frame_0000.png"),
+        filepath=os.path.join(config['output']['temp_img_dir'], "frame_0000.png"),
         channel=1, frame_start=1
     )
 
@@ -182,7 +192,7 @@ def render_video(global_info):
     scene.render.image_settings.file_format = 'FFMPEG'
     scene.render.ffmpeg.format = 'MPEG4'
     scene.render.ffmpeg.codec = 'H264'
-    scene.render.fps = 30
+    scene.render.fps = config['render']['fps']
     scene.render.filepath = output_video
     scene.frame_start = 1
     scene.frame_end = frame_count
@@ -194,6 +204,14 @@ def render_video(global_info):
     print(f"Process complete. Video saved to: {output_video}")
 
 if __name__ == '__main__':
+    args = parse_args()
+    config_name = args.config
+
+    cwd = os.path.dirname(os.path.abspath(__file__))
+    config_path = os.path.join(cwd, config_name)
+    with open(config_path, 'r') as f:
+        config = yaml.safe_load(f)
+
     init_io()
     global_info = init_global_info()
     set_camera_light(global_info)

@@ -2,6 +2,19 @@
 
 A tool repository for visualize/render shape sequence.
 
+## Installation
+
+This repository is developed in blender4.2 or higher version.
+
+Some python package like `yaml` may need to install Manually:
+
+``` bash
+# Windows: use command like:
+<blender_path>/4.2/python/bin/python.exe -m pip install pyyaml
+# Linux: use command like:
+<blender_path>/4.2/python/bin/python -m pip install pyyaml
+```
+
 ## visualize
 
 Load and run visualize/vis_by_import_frame.py in blender to import shape sequence and watch it at any perspective.
