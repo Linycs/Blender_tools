@@ -1,4 +1,5 @@
 # folders
+.vscode/
 cache/
 temp*/
 test*/
